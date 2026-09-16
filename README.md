@@ -98,18 +98,30 @@ Flags accepted by `process`:
 
 ## Testing
 
-Tests mirror `src/`: unit tests live in `tests/audio/` and `tests/utils/`,
-`tests/integration/` runs the whole pipeline on real WAV files, and
-`tests/bench/` holds the benchmark, which is not part of the test run. CTest
-runs the tests from the repo root, so fixtures resolve against
-`test_files/sound.wav`.
+Tests mirror `src/`:
 
-C++ unit tests are run via CTest (part of the `cmake-tests` CI job):
+- `tests/audio/`, `tests/cli/` and `tests/utils/` hold the C++ unit tests.
+- `tests/integration/` runs the whole pipeline on real WAV files.
+- `tests/addon/` tests the Node addon's JavaScript API.
+- `tests/support/` holds shared test helpers, and `tests/bench/` holds the
+  benchmark, which is not part of the test run.
+
+C++ tests run via CTest (part of the `cmake-tests` CI job), from the repo root
+so fixtures resolve against `test_files/sound.wav`. With `-DBUILD_CLI=ON`, CTest
+also runs quick smoke tests of the `dissonance.core` executable:
 
 ```bash
 cmake -S . -B cmake-build -DBUILD_CLI=ON -DBUILD_NODE_ADDON=OFF
 cmake --build cmake-build
 ctest --test-dir cmake-build --output-on-failure
+```
+
+The addon tests use Node's built-in test runner against
+`build/Release/dissonance_core.node`, so build the addon first:
+
+```bash
+npm run build
+npm test
 ```
 
 A WAV fixture for local addon smoke-testing lives at `test_files/sound.wav`.
@@ -120,14 +132,16 @@ A WAV fixture for local addon smoke-testing lives at `test_files/sound.wav`.
 npm run coverage
 ```
 
-Builds the tests with coverage instrumentation (`-DENABLE_COVERAGE=ON`) in
-`cmake-build-coverage/`, runs them through CTest, and prints per-file line,
-function and branch coverage with [gcovr](https://gcovr.com). An HTML report
-with the uncovered lines highlighted is written to
-`cmake-build-coverage/coverage.html`. Report settings live in `gcovr.cfg`.
+Builds the C++ tests, the CLI and the addon with coverage instrumentation
+(`-DENABLE_COVERAGE=ON`) in `cmake-build-coverage/`, runs CTest and the addon
+tests, and prints per-file line, function and branch coverage with
+[gcovr](https://gcovr.com). An HTML report with the uncovered lines highlighted
+is written to `cmake-build-coverage/coverage.html`. Report settings live in
+`gcovr.cfg`.
 
-It needs GoogleTest and gcovr: `brew install googletest gcovr` on macOS, or
-`apt install libgtest-dev gcovr` on Debian/Ubuntu.
+It needs GoogleTest and gcovr (`brew install googletest gcovr` on macOS, or
+`apt install libgtest-dev gcovr` on Debian/Ubuntu), plus Node.js, whose headers
+the addon build uses.
 
 ## Code quality
 

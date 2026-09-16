@@ -10,8 +10,10 @@
     "build:cli:debug": "node scripts/build-cli.js --config=Debug",
     "build:cli:release": "node scripts/build-cli.js --config=Release",
     "build:local": "npm run build:addon:dist && npm run build:cli:debug",
-    "test": "echo \"JS tests removed — DSP covered by CTest\"",
-    "coverage": "cmake -S . -B cmake-build-coverage -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_NODE_ADDON=OFF -DBUILD_CLI=OFF && cmake --build cmake-build-coverage --parallel && ctest --test-dir cmake-build-coverage --output-on-failure --no-tests=error && gcovr cmake-build-coverage",
+    "test": "node --test tests/addon/addon.test.js",
+    "coverage": "npm run coverage:build && npm run coverage:test && gcovr cmake-build-coverage",
+    "coverage:build": "cmake -S . -B cmake-build-coverage -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_NODE_ADDON=ON -DBUILD_CLI=ON && cmake --build cmake-build-coverage --parallel",
+    "coverage:test": "ctest --test-dir cmake-build-coverage --output-on-failure --no-tests=error && DISSONANCE_CORE_ADDON=cmake-build-coverage/dissonance_core.node npm test",
     "format:cpp": "node scripts/clang-format.js",
     "format:cpp:check": "node scripts/clang-format.js --check",
     "cppcheck": "node scripts/cppcheck.js"

@@ -14,6 +14,10 @@ class WindowFunctionsTest : public ::testing::Test {
     }
 };
 
+TEST_F(WindowFunctionsTest, UnknownWindowTypeThrows) {
+    EXPECT_THROW(window::generate(static_cast<window::Type>(99), 8), dissonance::DspError);
+}
+
 TEST_F(WindowFunctionsTest, HannWindowSize8) {
     std::vector<float> win = window::generate(window::Type::Hann, 8);
 
