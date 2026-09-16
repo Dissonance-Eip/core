@@ -114,6 +114,21 @@ ctest --test-dir cmake-build --output-on-failure
 
 A WAV fixture for local addon smoke-testing lives at `test_files/sound.wav`.
 
+### Coverage
+
+```bash
+npm run coverage
+```
+
+Builds the tests with coverage instrumentation (`-DENABLE_COVERAGE=ON`) in
+`cmake-build-coverage/`, runs them through CTest, and prints per-file line,
+function and branch coverage with [gcovr](https://gcovr.com). An HTML report
+with the uncovered lines highlighted is written to
+`cmake-build-coverage/coverage.html`. Report settings live in `gcovr.cfg`.
+
+It needs GoogleTest and gcovr: `brew install googletest gcovr` on macOS, or
+`apt install libgtest-dev gcovr` on Debian/Ubuntu.
+
 ## Code quality
 
 ```bash

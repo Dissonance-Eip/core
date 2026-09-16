@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_NODE_ADDON "Build the Node.js addon (requires node_api.h)" OFF)
 option(BUILD_CLI "Build the CLI executable" ON)
+option(ENABLE_COVERAGE "Instrument the build for gcov/gcovr coverage (GCC or Clang)" OFF)
+
+if(ENABLE_COVERAGE)
+        add_compile_options(--coverage)
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " --coverage")
+endif()
 
 set(DISSONANCE_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 

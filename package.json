@@ -11,6 +11,7 @@
     "build:cli:release": "node scripts/build-cli.js --config=Release",
     "build:local": "npm run build:addon:dist && npm run build:cli:debug",
     "test": "echo \"JS tests removed — DSP covered by CTest\"",
+    "coverage": "cmake -S . -B cmake-build-coverage -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug -DBUILD_NODE_ADDON=OFF -DBUILD_CLI=OFF && cmake --build cmake-build-coverage --parallel && ctest --test-dir cmake-build-coverage --output-on-failure --no-tests=error && gcovr cmake-build-coverage",
     "format:cpp": "node scripts/clang-format.js",
     "format:cpp:check": "node scripts/clang-format.js --check",
     "cppcheck": "node scripts/cppcheck.js"
