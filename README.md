@@ -98,6 +98,12 @@ Flags accepted by `process`:
 
 ## Testing
 
+Tests mirror `src/`: unit tests live in `tests/audio/` and `tests/utils/`,
+`tests/integration/` runs the whole pipeline on real WAV files, and
+`tests/bench/` holds the benchmark, which is not part of the test run. CTest
+runs the tests from the repo root, so fixtures resolve against
+`test_files/sound.wav`.
+
 C++ unit tests are run via CTest (part of the `cmake-tests` CI job):
 
 ```bash

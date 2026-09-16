@@ -72,8 +72,10 @@ if(BUILD_CLI)
 endif()
 
 enable_testing()
-file(GLOB TEST_SOURCES tests/*.cpp)
-list(FILTER TEST_SOURCES EXCLUDE REGEX ".*/bench_main\\.cpp$")
+# Tests mirror src/ (tests/audio, tests/utils) plus tests/integration;
+# tests/bench holds the benchmark, which is built separately below.
+file(GLOB_RECURSE TEST_SOURCES tests/*.cpp)
+list(FILTER TEST_SOURCES EXCLUDE REGEX ".*/tests/bench/.*")
 find_package(GTest QUIET)
 
 if(GTest_FOUND AND TEST_SOURCES)
@@ -83,12 +85,14 @@ if(GTest_FOUND AND TEST_SOURCES)
         set_target_properties(runTests PROPERTIES
                 RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         )
-        add_test(NAME runTests COMMAND runTests)
+        # Tests open fixtures such as ./test_files/sound.wav relative to the
+        # working directory, so run them from the repo root, not the build dir.
+        add_test(NAME runTests COMMAND runTests WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
 
 option(BUILD_BENCH "Build benchmark executable" OFF)
 if(BUILD_BENCH)
-        add_executable(dissonance.bench tests/bench_main.cpp ${DISSONANCE_SOURCES})
+        add_executable(dissonance.bench tests/bench/bench_main.cpp ${DISSONANCE_SOURCES})
         target_include_directories(dissonance.bench PRIVATE ${DISSONANCE_INCLUDE_DIR})
         target_link_libraries(dissonance.bench PRIVATE kissfft)
         set_target_properties(dissonance.bench PROPERTIES
