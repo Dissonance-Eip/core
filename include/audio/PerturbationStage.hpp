@@ -12,7 +12,7 @@
  *        perturbation strategies.
  *
  * Supported modes:
- *   - "white_noise"      — HP-filtered white noise above 8 kHz (original algorithm).
+ *   - "white_noise"      — Threshold-shaped white noise (gated under psychoacoustic mask).
  *   - "phase_distortion" — Noise shaped by FFT phase randomisation per frame.
  *   - "spectral_gate"    — Noise with randomly zeroed spectral bins per frame.
  *   - "pink_noise"       — Voss-McCartney 1/f noise + HP filter.
@@ -31,8 +31,10 @@ class PerturbationStage : public AudioStage {
      * @param strength    Noise level multiplier in [0, 1].
      * @param sampleRate  Sample rate of the input audio in Hz.
      * @param seed        RNG seed — derive from file characteristics for determinism.
-     * @param context     Optional shared MaskContext precomputed by MaskingThresholdStage.
-     *                    Reserved for mask-aware shaping (not yet consumed here). May be null.
+     * @param context     Shared MaskContext precomputed by MaskingThresholdStage.
+     *                    When non-null with valid masks, white_noise is spectrally
+     *                    shaped against the per-bin psychoacoustic threshold.
+     *                    May be null; in that case white_noise falls back to flat noise.
      */
     PerturbationStage(const std::string &mode, float strength, uint32_t sampleRate,
                       uint64_t seed = 0, MaskContext *context = nullptr);
@@ -43,7 +45,7 @@ class PerturbationStage : public AudioStage {
     float rmsDbfs() const { return rmsDbfs_; }
 
   private:
-    static void applyWhiteNoise(const std::vector<float> &noise, uint16_t numChannels);
+    void applyWhiteNoise(std::vector<float> &noise, uint16_t numChannels);
     void applyPhaseDistortion(std::vector<float> &noise, uint16_t numChannels);
     void applySpectralGate(std::vector<float> &noise, uint16_t numChannels);
     void applyPinkNoise(std::vector<float> &noise, uint16_t numChannels);

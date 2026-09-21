@@ -100,6 +100,141 @@ TEST(PerturbationStageTest, DifferentSeedsProduceDifferentNoise) {
 }
 
 // ---------------------------------------------------------------------------
+// Mask-shaping tests (issue #88)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/** Build a MaskContext with flat per-bin thresholds for all channels/frames. */
+MaskContext makeFlatMask(uint16_t numChannels, size_t framesPerChannel, size_t frameSize,
+                         float threshold) {
+    MaskContext ctx;
+    ctx.frameSize = frameSize;
+    ctx.hopSize = frameSize / 2;
+    ctx.numChannels = numChannels;
+    ctx.framesPerChannel = framesPerChannel;
+    ctx.perChannelFrameThresholds.resize(numChannels);
+    for (uint16_t ch = 0; ch < numChannels; ++ch) {
+        ctx.perChannelFrameThresholds[ch].resize(framesPerChannel);
+        for (size_t f = 0; f < framesPerChannel; ++f) {
+            ctx.perChannelFrameThresholds[ch][f] = std::vector<float>(frameSize, threshold);
+        }
+    }
+    return ctx;
+}
+
+} // namespace
+
+// ---------------------------------------------------------------------------
+// Null context fallback: noise is added, output in range
+// ---------------------------------------------------------------------------
+
+TEST(PerturbationStageTest, NullContextFallbackAddsNoise) {
+    std::vector<float> samples(8192, 0.0f);
+    std::vector<float> original = samples;
+
+    PerturbationStage stage("white_noise", 1.0f, 44100, 42, nullptr);
+    stage.process(samples, 1);
+
+    EXPECT_NE(samples, original);
+    EXPECT_GT(stage.rmsDbfs(), PerturbationStage::kSilentDbfs);
+    for (float s : samples) {
+        EXPECT_GE(s, -1.0f);
+        EXPECT_LE(s, 1.0f);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mask-shaped noise: total noise power is bounded by the mask
+// ---------------------------------------------------------------------------
+
+TEST(PerturbationStageTest, MaskShapedNoiseStaysUnderThreshold) {
+    // Buffer length must produce a whole number of mask frames. Any samples
+    // beyond the last mask frame pass full-strength white noise.
+    constexpr size_t kFrameSize = 2048;
+    constexpr size_t kHopSize = kFrameSize / 2;
+    constexpr size_t kFrameCount = 7; // (total - frameSize) / hop + 1
+    constexpr size_t kTotalSamples = kFrameSize + (kFrameCount - 1) * kHopSize;
+    constexpr float kThreshold = 0.005f;
+
+    auto noiseRmsOf = [](const std::vector<float> &out, const std::vector<float> &in) {
+        double sumSq = 0.0;
+        for (size_t i = 0; i < out.size(); ++i) {
+            double diff = static_cast<double>(out[i]) - static_cast<double>(in[i]);
+            sumSq += diff * diff;
+        }
+        return static_cast<float>(std::sqrt(sumSq / static_cast<double>(out.size())));
+    };
+
+    // Threshold-shaped white noise (mask context present).
+    MaskContext mask = makeFlatMask(1, kFrameCount, kFrameSize, kThreshold);
+    std::vector<float> shaped(kTotalSamples, 0.0f);
+    std::vector<float> silent(kTotalSamples, 0.0f);
+    PerturbationStage shapedStage("white_noise", 1.0f, 44100, 42, &mask);
+    shapedStage.process(shaped, 1);
+
+    // Flat white noise + HP (no mask) at the same seed and strength.
+    std::vector<float> flat(kTotalSamples, 0.0f);
+    PerturbationStage flatStage("white_noise", 1.0f, 44100, 42, nullptr);
+    flatStage.process(flat, 1);
+
+    const float shapedRms = noiseRmsOf(shaped, silent);
+    const float flatRms = noiseRmsOf(flat, silent);
+
+    // Noise was added in both cases.
+    EXPECT_GT(shapedRms, 0.0f);
+    EXPECT_GT(flatRms, 0.0f);
+
+    // Gating every bin at threshold must cut the injected energy well below
+    // the flat fallback: the shape of the noise is what makes it quieter, not
+    // the overall amplitude setting.
+    EXPECT_LT(shapedRms, flatRms / 10.0f);
+}
+
+// ---------------------------------------------------------------------------
+// Very low mask thresholds yield near-silent output
+// ---------------------------------------------------------------------------
+
+TEST(PerturbationStageTest, VeryLowMaskYieldsNearSilentOutput) {
+    // Coverage must span the whole buffer, not just the first frames.
+    constexpr size_t kFrameSize = 2048;
+    constexpr size_t kHopSize = kFrameSize / 2;
+    constexpr size_t kFrameCount = 7; // (total - frameSize) / hop + 1
+    constexpr size_t kTotalSamples = kFrameSize + (kFrameCount - 1) * kHopSize;
+
+    MaskContext mask = makeFlatMask(1, kFrameCount, kFrameSize, 1e-6f);
+
+    std::vector<float> samples(kTotalSamples, 0.0f);
+
+    PerturbationStage stage("white_noise", 1.0f, 44100, 42, &mask);
+    stage.process(samples, 1);
+
+    // With every bin clamped to ~1e-6, injected energy is essentially zero.
+    // The flat fallback alone would sit near -40 dBFS (rms ~0.005), so a
+    // 1e-4 bound only passes if the mask actually suppressed the noise.
+    float rms = computeRms(samples);
+    EXPECT_LT(rms, 1e-4f);
+}
+
+// ---------------------------------------------------------------------------
+// Empty MaskContext (hasMasks() == false) falls back to flat noise
+// ---------------------------------------------------------------------------
+
+TEST(PerturbationStageTest, EmptyMaskContextFallsBackToFlat) {
+    MaskContext emptyMask;
+    // framesPerChannel defaults to 0, so hasMasks() == false
+
+    std::vector<float> samples(8192, 0.0f);
+    std::vector<float> original = samples;
+
+    PerturbationStage stage("white_noise", 1.0f, 44100, 42, &emptyMask);
+    stage.process(samples, 1);
+
+    EXPECT_NE(samples, original);
+    EXPECT_GT(stage.rmsDbfs(), PerturbationStage::kSilentDbfs);
+}
+
+// ---------------------------------------------------------------------------
 // Same seed produces identical output (determinism)
 // ---------------------------------------------------------------------------
 
