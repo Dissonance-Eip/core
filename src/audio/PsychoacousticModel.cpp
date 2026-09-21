@@ -134,8 +134,8 @@ std::vector<float> PsychoacousticModel::computeThresholds(const std::vector<floa
     // the allowance with bin count: a wide band ends up with a threshold
     // ~sqrt(binCount) times larger than any individual bin's real magnitude
     // justifies, letting far more noise through per-bin in wide bands. This
-    // is most visible with high-frequency noise (e.g. white_noise's 8 kHz
-    // high-pass), which lands almost entirely in the widest top bands.
+    // is most visible with high-frequency perturbation content, which lands
+    // almost entirely in the widest top bands.
     // Averaging keeps the threshold representative of a single bin.
     std::vector<float> bandLinearEnergy(kNumBarkBands, 0.0f);
     std::vector<size_t> bandBinCount(kNumBarkBands, 0);

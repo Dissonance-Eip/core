@@ -72,7 +72,6 @@ void PerturbationStage::applyWhiteNoise(std::vector<float> &noise, uint16_t numC
     if (totalFrames < kFrameSize)
         return;
 
-    std::mt19937 rng(static_cast<uint32_t>(seed_ ^ (seed_ >> 32)));
     const std::vector<float> window = window::generate(window::Type::Hann, kFrameSize);
 
     for (uint16_t ch = 0; ch < numChannels; ++ch) {
